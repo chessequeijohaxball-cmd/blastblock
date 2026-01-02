@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>BlastBlock123</title>
+
+<style>
+:root{
+  --bg:#0b132b;
+  --panel:#1c2541;
+  --cell:#2b3a55;
+  --accent:#5bc0be;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:#fff;
+  font-family:Arial,Helvetica,sans-serif;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:100vh;
+}
+.screen{
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  gap:16px;
+}
+#menu{display:flex}
+button{
+  background:var(--accent);
+  border:none;
+  border-radius:12px;
+  padding:12px 32px;
+  font-size:18px;
+  font-weight:bold;
+}
+#topbar{
+  position:fixed;
+  top:10px;
+  right:10px;
+}
+#dropdown{
+  display:none;
+  background:var(--panel);
+  padding:10px;
+  border-radius:10px;
+}
+.panel{
+  background:var(--panel);
+  padding:20px;
+  border-radius:18px;
+}
+#board{
+  display:grid;
+  grid-template-columns:repeat(8,40px);
+  gap:4px;
+  background:var(--panel);
+  padding:12px;
+  border-radius:16px;
+}
+.cell{
+  width:40px;
+  height:40px;
+  background:var(--cell);
+  border-radius:6px;
+}
+.filled{
+  background:var(--accent);
+}
+#blocks{
+  display:flex;
+  gap:24px;
+  margin-top:10px;
+}
+.block{
+  display:grid;
+  gap:4px;
+  touch-action:none;
+}
+.block div{
+  width:36px;
+  height:36px;
+  border-radius:6px;
+  background:var(--accent);
+}
+#gameover{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.8);
+  display:none;
+  justify-content:center;
+  align-items:center;
+}
+</style>
+</head>
+
+<body>
+
+<!-- MENU -->
+<div id="menu" class="screen">
+  <h1>BlastBlock123</h1>
+  <button onclick="startGame()">PLAY</button>
+  <button onclick="openSettings()">CONFIGURAÇÕES</button>
+  <button onclick="openRanking()">RANKING</button>
+</div>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <button onclick="toggleMenu()">⋮</button>
+  <div id="dropdown">
+    <button onclick="login()">Fazer login</button>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div id="settings" class="screen">
+  <div class="panel">
+    <h2>Configurações</h2>
+    <label><input type="checkbox" checked onchange="sound=this.checked"> Som</label><br><br>
+    <label>Dificuldade:
+      <select onchange="difficulty=this.value">
+        <option value="normal">Normal</option>
+        <option value="hard">Difícil</option>
+      </select>
+    </label><br><br>
+    <button onclick="backMenu()">Voltar</button>
+  </div>
+</div>
+
+<!-- RANKING -->
+<div id="ranking" class="screen">
+  <div class="panel">
+    <h2>Ranking</h2>
+    <p>Login necessário</p>
+    <button onclick="backMenu()">Voltar</button>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="game" class="screen">
+  <h2>Pontos: <span id="score">0</span></h2>
+  <div id="board"></div>
+  <div id="blocks"></div>
+</div>
+
+<!-- GAME OVER -->
+<div id="gameover">
+  <div class="panel">
+    <h2>Derrota 😢</h2>
+    <p>Sua pontuação: <span id="finalScore"></span></p>
+    <button onclick="startGame()">PLAY</button>
+  </div>
+</div>
+
+<script>
+let score=0;
+let sound=true;
+let difficulty="normal";
+const board=[];
+const boardEl=document.getElementById("board");
+const blocksEl=document.getElementById("blocks");
+
+function show(id){
+  document.querySelectorAll(".screen").forEach(s=>s.style.display="none");
+  document.getElementById(id).style.display="flex";
+}
+function toggleMenu(){
+  const d=document.getElementById("dropdown");
+  d.style.display=d.style.display==="block"?"none":"block";
+}
+function login(){alert("Login em breve")}
+function openSettings(){show("settings")}
+function openRanking(){show("ranking")}
+function backMenu(){show("menu")}
+
+function startGame(){
+  score=0;
+  document.getElementById("score").innerText=0;
+  document.getElementById("gameover").style.display="none";
+  initBoard();
+  newBlocks();
+  show("game");
+}
+
+function initBoard(){
+  board.length=0;
+  boardEl.innerHTML="";
+  for(let i=0;i<64;i++){
+    board.push(0);
+    const c=document.createElement("div");
+    c.className="cell";
+    boardEl.appendChild(c);
+  }
+}
+
+const SHAPES=[
+ [[1]],
+ [[1,1]],
+ [[1],[1]],
+ [[1,1,1]],
+ [[1],[1],[1]],
+ [[1,1],[1,1]],
+ [[1,1,1],[0,1,0]],
+ [[1,0],[1,1]],
+ [[0,1],[1,1]]
+];
+
+function newBlocks(){
+  blocksEl.innerHTML="";
+  for(let i=0;i<3;i++){
+    const shape=SHAPES[Math.floor(Math.random()*SHAPES.length)];
+    const b=document.createElement("div");
+    b.className="block";
+    b.shape=shape;
+    shape.forEach(r=>{
+      r.forEach(v=>{
+        if(v){
+          const d=document.createElement("div");
+          b.appendChild(d);
+        }
+      })
+    })
+    enableDrag(b);
+    blocksEl.appendChild(b);
+  }
+}
+
+function enableDrag(block){
+  let dragging=false;
+  block.addEventListener("touchstart",()=>dragging=true);
+  block.addEventListener("touchend",()=>{
+    dragging=false;
+    placeBlock(block);
+  });
+}
+
+function placeBlock(block){
+  let placed=false;
+  for(let i=0;i<64;i++){
+    if(canPlace(block.shape,i)){
+      applyBlock(block.shape,i);
+      placed=true;
+      score+=block.shape.flat().filter(x=>x).length;
+      document.getElementById("score").innerText=score;
+      block.remove();
+      break;
+    }
+  }
+  checkLines();
+  if(blocksEl.children.length===0) newBlocks();
+  if(!hasMoves()) gameOver();
+}
+
+function canPlace(shape,pos){
+  const x=pos%8;
+  const y=Math.floor(pos/8);
+  for(let r=0;r<shape.length;r++){
+    for(let c=0;c<shape[r].length;c++){
+      if(shape[r][c]){
+        const nx=x+c, ny=y+r;
+        if(nx>=8||ny>=8||board[ny*8+nx]) return false;
+      }
+    }
+  }
+  return true;
+}
+
+function applyBlock(shape,pos){
+  const x=pos%8;
+  const y=Math.floor(pos/8);
+  shape.forEach((r,ry)=>{
+    r.forEach((v,rx)=>{
+      if(v){
+        const i=(y+ry)*8+(x+rx);
+        board[i]=1;
+        boardEl.children[i].classList.add("filled");
+      }
+    })
+  })
+}
+
+function checkLines(){
+  for(let r=0;r<8;r++){
+    let full=true;
+    for(let c=0;c<8;c++) if(!board[r*8+c]) full=false;
+    if(full) clearRow(r);
+  }
+  for(let c=0;c<8;c++){
+    let full=true;
+    for(let r=0;r<8;r++) if(!board[r*8+c]) full=false;
+    if(full) clearCol(c);
+  }
+}
+
+function clearRow(r){
+  for(let c=0;c<8;c++){
+    board[r*8+c]=0;
+    boardEl.children[r*8+c].classList.remove("filled");
+  }
+  score+=10;
+}
+
+function clearCol(c){
+  for(let r=0;r<8;r++){
+    board[r*8+c]=0;
+    boardEl.children[r*8+c].classList.remove("filled");
+  }
+  score+=10;
+}
+
+function hasMoves(){
+  for(const b of blocksEl.children){
+    for(let i=0;i<64;i++) if(canPlace(b.shape,i)) return true;
+  }
+  return false;
+}
+
+function gameOver(){
+  document.getElementById("finalScore").innerText=score;
+  document.getElementById("gameover").style.display="flex";
+}
+
+show("menu");
+</script>
+
+</body>
+</html>
